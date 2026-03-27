@@ -1,13 +1,18 @@
 import sqlite3
 import pandas as pd
+import os
 
-conexion = sqlite3.connect('penguin_colony_final.db')
+db_name = 'penguin_colony_final.db' 
+
+
+if os.path.exists(db_name):
+    os.remove(db_name)
+    print(f"Base de datos {db_name} reseteada.")
+
+
+conexion = sqlite3.connect(db_name)
 cursor = conexion.cursor()
 
-cursor.execute("PRAGMA foreign_keys = ON;")
-
-# 1. CREACIÓN DE TABLAS CON TODAS LAS COLUMNAS DEL CSV
-# Agregamos created_at, is_active y deleted_at que faltaban
 
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS customers (
@@ -53,7 +58,7 @@ cursor.execute("""
     )
 """)
 
-# Esta tabla tiene columnas de descuentos y totales que hay que incluir
+
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS order_items (
         order_item_id INTEGER PRIMARY KEY,
@@ -81,7 +86,7 @@ cursor.execute("""
     )
 """)
 
-# Agregamos la columna 'reason' que viene en el CSV
+
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS order_status_history (
         status_history_id INTEGER PRIMARY KEY,
@@ -107,7 +112,7 @@ cursor.execute("""
     )
 """)
 
-# 2. CARGA DE DATOS
+
 archivos_carga = [
     ('customers.csv', 'customers'),
     ('products.csv', 'products'),
@@ -126,4 +131,3 @@ for archivo, tabla in archivos_carga:
 
 conexion.commit()
 conexion.close()
-print("\n¡Desafío superado! Base de datos creada sin errores de columnas.")
