@@ -2,15 +2,15 @@ import sqlite3
 import pandas as pd
 import os
 
-db_name = 'penguin_colony_final.db' 
+BaseDedatos = 'hendyla.db' 
 
 
-if os.path.exists(db_name):
-    os.remove(db_name)
-    print(f"Base de datos {db_name} reseteada.")
+if os.path.exists(BaseDedatos):
+    os.remove(BaseDedatos)
+    print(f"Base de datos {BaseDedatos} reseteada.")
 
 
-conexion = sqlite3.connect(db_name)
+conexion = sqlite3.connect(BaseDedatos)
 cursor = conexion.cursor()
 
 
@@ -127,7 +127,67 @@ for archivo, tabla in archivos_carga:
     print(f"Cargando {archivo}...")
     df = pd.read_csv(archivo)
     # Ahora sí, las columnas coinciden perfectamente
-    df.to_sql(tabla, conexion, if_exists='append', index=False)
+    df.to_sql(tabla, conexion, if_exists='append', index=False)#interpreta 
+
+# --- 3. CONSULTAS ESTRUCTURALES (Punto 5.4) ---
+print("\n=== CONSULTAS ESTRUCTURALES (Navegando el Modelo) ===")
+
+# A. Rastrear pedidos y sus clientes (Relacionar entidades)
+consulta_pedidos = """
+SELECT o.order_id, c.full_name, o.order_datetime, o.order_total
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id
+WHERE o.order_total > 500000
+ORDER BY o.order_total DESC;
+"""
+print("\nPedidos de alto valor:")
+print(pd.read_sql_query(consulta_pedidos, conexion))
+
+# B. Ver detalle de productos en cada orden (Rastrear eventos)
+consulta_detalles = """
+SELECT o.order_id, p.product_name, oi.quantity, oi.line_total
+FROM order_items oi
+JOIN orders o ON oi.order_id = o.order_id
+JOIN products p ON oi.product_id = p.product_id
+ORDER BY o.order_id ASC;
+"""
+print("\nDesglose de productos por pedido:")
+print(pd.read_sql_query(consulta_detalles, conexion).head(10)) # Mostramos los primeros 10
+
+
+# --- 4. VALIDACIÓN DE INTEGRIDAD (Punto 5.5) ---
+print("\n=== VALIDACIÓN DE INTEGRIDAD (Buscando fallas) ===")
+
+# A. Detectar Relaciones Rotas (Pedidos sin items)
+# Si un pedido existe pero no tiene productos cargados, es una inconsistencia.
+validacion_items = """
+SELECT o.order_id, o.order_datetime
+FROM orders o
+LEFT JOIN order_items oi ON o.order_id = oi.order_id
+WHERE oi.order_item_id IS NULL;
+"""
+print("\nPedidos sin productos asociados (Relación incompleta):")
+print(pd.read_sql_query(validacion_items, conexion))
+
+# B. Detectar Estados Imposibles (Productos con costo mayor al precio)
+# Aunque pusimos un CHECK, esta consulta sirve para auditar la tabla.
+validacion_precios = """
+SELECT product_id, product_name, unit_cost, unit_price
+FROM products
+WHERE unit_cost > unit_price;
+"""
+print("\nProductos con margen negativo (Error de negocio):")
+print(pd.read_sql_query(validacion_precios, conexion))
+
+# C. Detectar Entidades Incompletas (Clientes sin email o teléfono)
+validacion_contacto = """
+SELECT customer_id, full_name
+FROM customers
+WHERE email IS NULL OR phone IS NULL;
+"""
+print("\nClientes con datos de contacto faltantes:")
+print(pd.read_sql_query(validacion_contacto, conexion))
+
 
 conexion.commit()
 conexion.close()
