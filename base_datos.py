@@ -137,7 +137,7 @@ consulta_pedidos = """
 SELECT o.order_id, c.full_name, o.order_datetime, o.order_total
 FROM orders o
 JOIN customers c ON o.customer_id = c.customer_id
-WHERE o.order_total > 500000
+WHERE o.order_total > 300
 ORDER BY o.order_total DESC;
 """
 print("\nPedidos de alto valor:")
@@ -187,6 +187,34 @@ WHERE email IS NULL OR phone IS NULL;
 """
 print("\nClientes con datos de contacto faltantes:")
 print(pd.read_sql_query(validacion_contacto, conexion))
+
+# Definimos el parámetro que queremos buscar
+nombre_a_buscar = "Camila Benitez"
+
+# El '?' es el marcador de posición
+query_cliente = "SELECT * FROM customers WHERE full_name = ?"
+
+# Ejecutamos pasando el parámetro dentro de una TUPLA (por eso lleva la coma al final)
+df_cliente = pd.read_sql_query(query_cliente, conexion, params=(nombre_a_buscar,))#le pasamos en tupla porque necesitamos un valor iterable porque pandas no acepta valores sueltos
+
+print(f"Resultado de búsqueda para: {nombre_a_buscar}")
+print(df_cliente)
+
+# Filtros que podrían venir de un formulario o input
+canal_filtro = 'web'
+estado_filtro = 'shipped'
+
+query_pedidos = """
+    SELECT order_id, order_datetime, order_total 
+    FROM orders 
+    WHERE channel = ? AND current_status = ?
+"""
+
+# Pasamos los dos parámetros en orden
+df_filtrado = pd.read_sql_query(query_pedidos, conexion, params=(canal_filtro, estado_filtro))
+
+print(f"Pedidos en {canal_filtro} que están {estado_filtro}:")
+print(df_filtrado.head())
 
 
 conexion.commit()
