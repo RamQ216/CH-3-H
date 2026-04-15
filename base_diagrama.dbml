@@ -1,0 +1,91 @@
+// --- Tabla de Clientes ---
+Table customers {
+  customer_id integer [primary key]
+  full_name text [not null]
+  email text
+  phone text
+  city text
+  segment text
+  created_at timestamp
+  is_active integer
+  deleted_at timestamp
+}
+
+// --- Tabla de Productos ---
+Table products {
+  product_id integer [primary key]
+  sku text [unique, not null]
+  product_name text [not null]
+  category text
+  brand text
+  unit_price real
+  unit_cost real
+  created_at timestamp
+  is_active integer
+  deleted_at timestamp
+}
+
+// --- Cabecera de Pedidos ---
+Table orders {
+  order_id integer [primary key]
+  customer_id integer [not null]
+  order_datetime timestamp
+  channel text
+  currency text
+  current_status text
+  order_total real
+  is_active integer
+  deleted_at timestamp
+}
+
+// --- Detalle de Productos por Pedido ---
+Table order_items {
+  order_item_id integer [primary key]
+  order_id integer [not null]
+  product_id integer [not null]
+  quantity integer
+  unit_price real
+  discount_rate real
+  line_total real
+}
+
+// --- Registro de Pagos ---
+Table payments {
+  payment_id integer [primary key]
+  order_id integer [not null]
+  payment_datetime timestamp
+  method text
+  payment_status text
+  amount real
+  currency text
+}
+
+// --- Historial de Estados del Pedido ---
+Table order_status_history {
+  status_history_id integer [primary key]
+  order_id integer [not null]
+  status text
+  changed_at timestamp
+  changed_by text
+  reason text
+}
+
+// --- Auditoría de Cambios ---
+Table order_audit {
+  audit_id integer [primary key]
+  order_id integer [not null]
+  field_name text
+  old_value text
+  new_value text
+  changed_at timestamp
+  changed_by text
+}
+
+// --- DEFINICIÓN DE RELACIONES (La magia del diagrama) ---
+
+Ref: orders.customer_id > customers.customer_id // Un cliente tiene muchos pedidos
+Ref: order_items.order_id > orders.order_id // Un pedido tiene muchos items
+Ref: order_items.product_id > products.product_id // Un producto puede estar en muchos items
+Ref: payments.order_id > orders.order_id // Un pedido tiene registros de pagos
+Ref: order_status_history.order_id > orders.order_id // Un pedido tiene historial de estados
+Ref: order_audit.order_id > orders.order_id // Un pedido tiene registros de auditoría
