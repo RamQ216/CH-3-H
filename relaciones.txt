@@ -1,0 +1,12 @@
+[Customers]
+        | (1:N)
+        V
+    [Orders]-----------(1:N)---->[Payments]
+        | (1:N)          | (1:N)
+        |                V
+        |         [Order_Status_History]
+        V
+  [Order_Items]
+        ^
+        | (N:1)
+   [Products]
