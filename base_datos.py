@@ -1,17 +1,17 @@
-import sqlite3
-import pandas as pd
-import os
+import sqlite3 #nuestro motor para la base de datos
+import pandas as pd#para realizar consultas mas visuales y realizar acciones como el insert
+import os# para borrar la db su ya existe
 
-BaseDedatos = 'hendyla.db' 
+BaseDedatos = 'hendyla.db' #definimos el nombre de la base datos
 
 
-if os.path.exists(BaseDedatos):
+if os.path.exists(BaseDedatos):#eliminar si ya existe
     os.remove(BaseDedatos)
     print(f"Base de datos {BaseDedatos} reseteada.")
 
 
-conexion = sqlite3.connect(BaseDedatos)
-cursor = conexion.cursor()
+conexion = sqlite3.connect(BaseDedatos)#nos conectamos al archivo fisico de la base de datos
+cursor = conexion.cursor()#es el ejecutor de ordenes, lleva las sentencias a la base de dtaos
 
 
 cursor.execute("""
@@ -26,7 +26,7 @@ cursor.execute("""
         is_active INTEGER,
         deleted_at TEXT
     )
-""")
+""")#creamos una tabla de clientes
 
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS products (
@@ -41,7 +41,7 @@ cursor.execute("""
         is_active INTEGER,
         deleted_at TEXT
     )
-""")
+""")#creamos una tabla de productos
 
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS orders (
@@ -56,7 +56,7 @@ cursor.execute("""
         order_total REAL,
         FOREIGN KEY (customer_id) REFERENCES customers (customer_id)
     )
-""")
+""")#creamos una tabla de pedidos
 
 
 cursor.execute("""
@@ -71,7 +71,7 @@ cursor.execute("""
         FOREIGN KEY (order_id) REFERENCES orders (order_id),
         FOREIGN KEY (product_id) REFERENCES products (product_id)
     )
-""")
+""")#creamos el inventario de nuestros productos
 
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS payments (
@@ -84,7 +84,7 @@ cursor.execute("""
         currency TEXT,
         FOREIGN KEY (order_id) REFERENCES orders (order_id)
     )
-""")
+""")#creamos una tabla de pagos
 
 
 cursor.execute("""
@@ -97,7 +97,7 @@ cursor.execute("""
         reason TEXT,
         FOREIGN KEY (order_id) REFERENCES orders (order_id)
     )
-""")
+""")#creamos una tabla de actualizaciones de los estados del pedido
 
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS order_audit (
@@ -110,10 +110,10 @@ cursor.execute("""
         changed_by TEXT,
         FOREIGN KEY (order_id) REFERENCES orders (order_id)
     )
-""")
+""")#creamos una tabla con las actualizaciones de los campos de los pedidos
 
 
-archivos_carga = [
+archivos_carga = [#creamos una lista donde recorre por documento y por encabezado
     ('customers.csv', 'customers'),
     ('products.csv', 'products'),
     ('orders.csv', 'orders'),
@@ -123,11 +123,32 @@ archivos_carga = [
     ('order_audit.csv', 'order_audit')
 ]
 
-for archivo, tabla in archivos_carga:
+for archivo, tabla in archivos_carga:#realizamos el insert por una funcion de pandas
     print(f"Cargando {archivo}...")
     df = pd.read_csv(archivo)
     # Ahora sí, las columnas coinciden perfectamente
-    df.to_sql(tabla, conexion, if_exists='append', index=False)#interpreta 
+    df.to_sql(tabla, conexion, if_exists='append', index=False)#cargamos los datos a la base de datos, si la tabla ya existe, se agregan los datos sin eliminar lo que ya hay, y no se agrega una columna de índice adicional
+
+# --- AGREGANDO ÍNDICES PARA OPTIMIZACIÓN ---
+print("REALIZANDO LA CREACION DE INDICES...")
+
+# 1. Índice en las llaves foráneas de orders (mejora los JOIN con clientes)
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);")
+
+# 2. Índice en la fecha de pedido (ideal para reportes por rango de tiempo)
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_date ON orders(order_datetime);")
+
+# 3. Índice en product_id dentro de order_items (acelera el desglose de productos)
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_items_product ON order_items(product_id);")
+
+# 4. Índice en el SKU de productos (ya que es un campo de búsqueda común)
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);")
+
+# 5. Índice en el estado del pago para la tabla payments
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(payment_status);")
+
+conexion.commit()
+print("Índices creados exitosamente.")
 
 # --- 3. CONSULTAS ESTRUCTURALES (Punto 5.4) ---
 print("\n=== CONSULTAS ESTRUCTURALES (Navegando el Modelo) ===")
